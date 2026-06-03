@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "TireInspect",
+    "slug": "tiremobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tenazoa.tireinspect",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Se necesita la cámara para fotografiar los neumáticos.",
+        "NSPhotoLibraryUsageDescription": "Acceso a fotos para las inspecciones."
+      }
+    },
+    "android": {
+      "package": "com.tenazoa.tireinspect",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d1117"
+      },
+      "permissions": ["android.permission.CAMERA"],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite seleccionar fotos de neumáticos.",
+          "cameraPermission": "Permite a TireInspect usar la cámara para fotografiar neumáticos."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ececba3d-dd11-4341-a6f8-172e796a1376"
+      }
+    },
+    "owner": "tenazoa"
+  }
+}

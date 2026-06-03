@@ -1,0 +1,7 @@
+.claude
+.expo
+node_modules
+.git
+*.log
+dist
+web-build
