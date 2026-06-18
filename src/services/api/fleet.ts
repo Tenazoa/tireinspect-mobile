@@ -8,6 +8,9 @@ export interface FleetTireSpec {
   lastDepthMm: number | null;
   code: string | null;
   life: string | null;
+  kmTotal?: number | null;
+  kmLife?: number | null;
+  pressurePsi?: number | null;
 }
 
 /** Trae las llantas conocidas de una placa (autollenado desde SOLOMON). */

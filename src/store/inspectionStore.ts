@@ -34,6 +34,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         brand: spec?.brand ?? undefined,
         model: spec?.model ?? undefined,
         size: spec?.size ?? undefined,
+        dotCode: spec?.code ?? undefined,
+        pressurePsi: spec?.pressurePsi ?? undefined,
         photos: [],
         recommendation: 'ok',
         inspectedAt: new Date().toISOString(),
