@@ -13,6 +13,14 @@ const FALLBACK_URL =
 
 let resolvedBase: string | null = null;
 
+// Despierta el backend (Render free se duerme) para que la 1ra foto/IA no demore.
+let warmedUp = false;
+function warmup(base: string) {
+  if (warmedUp) return;
+  warmedUp = true;
+  fetch(`${base}/docs`, { method: 'GET' }).catch(() => {});
+}
+
 async function resolveBaseUrl(): Promise<string> {
   if (resolvedBase) return resolvedBase;
 
@@ -24,6 +32,7 @@ async function resolveBaseUrl(): Promise<string> {
       if (cfg.apiUrl) {
         resolvedBase = String(cfg.apiUrl).trim().replace(/\/$/, '');
         await AsyncStorage.setItem('ti_api_base', resolvedBase);
+        warmup(resolvedBase);
         return resolvedBase;
       }
     }
@@ -33,15 +42,16 @@ async function resolveBaseUrl(): Promise<string> {
 
   // 2. Último valor conocido (guardado)
   const cached = await AsyncStorage.getItem('ti_api_base');
-  if (cached) { resolvedBase = cached; return cached; }
+  if (cached) { resolvedBase = cached; warmup(cached); return cached; }
 
   // 3. Fallback compilado
   resolvedBase = FALLBACK_URL;
+  warmup(FALLBACK_URL);
   return FALLBACK_URL;
 }
 
 export const apiClient = axios.create({
-  timeout: 20000,
+  timeout: 45000,
   headers: { 'Content-Type': 'application/json' },
 });
 

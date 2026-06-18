@@ -39,7 +39,7 @@ export async function analyzeTirePhoto(
 
   const { data } = await apiClient.post('/ai/analyze', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 20000,
+    timeout: 60000,
   });
 
   return {
@@ -109,7 +109,7 @@ export async function measureWithReference(
 
   const { data } = await apiClient.post('/ai/measure', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 25000,
+    timeout: 60000,
   });
 
   return {
