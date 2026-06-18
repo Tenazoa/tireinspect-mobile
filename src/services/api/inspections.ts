@@ -5,6 +5,16 @@ export async function syncInspection(inspection: Inspection): Promise<void> {
   await apiClient.post('/inspections/sync', inspection);
 }
 
+// Lista de inspecciones desde el backend (para verlas aunque se reinstale la app)
+export async function fetchCloudInspections(): Promise<any[]> {
+  try {
+    const { data } = await apiClient.get('/inspections');
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function uploadPhoto(tireInspectionId: string, localUri: string): Promise<string> {
   const formData = new FormData();
   const filename = localUri.split('/').pop() ?? 'photo.jpg';

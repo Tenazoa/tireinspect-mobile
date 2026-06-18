@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { getRecentInspections } from '../../services/storage/database';
+import { fetchCloudInspections } from '../../services/api/inspections';
 import type { Inspection } from '../../types';
 
 const REC_COLOR: Record<string,string> = { ok:'#3fb950', monitor:'#d29922', replace_soon:'#f78166', replace_now:'#e94560' };
@@ -9,7 +10,27 @@ const REC_LABEL: Record<string,string> = { ok:'OK', monitor:'Vigilar', replace_s
 export default function HistoryTab() {
   const [items, setItems] = useState<Inspection[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const load = async () => setItems(await getRecentInspections(50));
+  const load = async () => {
+    const local = await getRecentInspections(50);
+    const byId: Record<string, any> = {};
+    // primero la nube (resumen), luego local sobreescribe (tiene llantas completas)
+    const cloud = await fetchCloudInspections();
+    for (const c of cloud) {
+      byId[c.id] = {
+        id: c.id,
+        createdAt: c.completedAt || c.createdAt,
+        vehicle: { plate: c.plate, brand: c.vehicleLabel, model: '' },
+        tires: Array.from({ length: c.tireCount || 0 }, (_, i) => ({
+          id: `${c.id}-${i}`, position: '', recommendation: c.criticalCount > 0 ? 'replace_now' : 'ok',
+        })),
+        _cloud: true, criticalCount: c.criticalCount,
+      };
+    }
+    for (const l of local) byId[l.id] = l;
+    const merged = Object.values(byId).sort((a: any, b: any) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setItems(merged as Inspection[]);
+  };
   useEffect(() => { load(); }, []);
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
   const worstRec = (i: Inspection) => {
