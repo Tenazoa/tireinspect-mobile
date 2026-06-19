@@ -14,6 +14,7 @@ import {
   analyzeTirePhoto, measureWithReference, wearLevelColor, confidenceLabel,
   type AIAnalysisResult, type MeasurementResult,
 } from '../../services/ai/tireAI';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 const REC_COLOR: Record<string, string> = {
   ok: '#3fb950', monitor: '#d29922', replace_soon: '#f78166', replace_now: '#e94560',
@@ -53,6 +54,51 @@ export default function TireInspectionScreen() {
   const [notes, setNotes] = useState(tire?.notes ?? '');
   const [photos, setPhotos] = useState<TirePhoto[]>(tire?.photos ?? []);
   const [saving, setSaving] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState('');
+
+  // ── Dictado por voz de las medidas (interior/centro/exterior) ──
+  const wordToNum = (w: string): string | null => {
+    const map: Record<string, number> = { cero:0, uno:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, siete:7, ocho:8, nueve:9, diez:10, once:11, doce:12, trece:13, catorce:14, quince:15, dieciseis:16, diecisiete:17, dieciocho:18 };
+    if (/^\d+(\.\d+)?$/.test(w)) return w;
+    return map[w] != null ? String(map[w]) : null;
+  };
+  const parseMeasures = (text: string) => {
+    const t = text.toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ');
+    const grab = (kws: string) => {
+      const m = t.match(new RegExp(`(?:${kws})\\s*(?:de\\s*)?([0-9]+(?:[.,][0-9]+)?|\\w+)`));
+      if (!m) return null;
+      return wordToNum(m[1].replace(',', '.'));
+    };
+    const inn = grab('interior|interno|adentro|dentro|int');
+    const cen = grab('centro|medio|central|centra');
+    const out = grab('exterior|afuera|externo|fuera|ext');
+    if (inn) setInner(inn);
+    if (cen) setCenter(cen);
+    if (out) setOuter(out);
+    return { inn, cen, out };
+  };
+
+  useSpeechRecognitionEvent('result', (e: any) => {
+    const txt = e.results?.[0]?.transcript ?? '';
+    setHeard(txt);
+    if (txt) parseMeasures(txt);
+  });
+  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechRecognitionEvent('error', () => setListening(false));
+
+  const startVoice = async () => {
+    try {
+      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Micrófono', 'Habilita el permiso de micrófono para dictar.'); return; }
+      setHeard(''); setListening(true);
+      ExpoSpeechRecognitionModule.start({ lang: 'es-PE', interimResults: true, continuous: false });
+    } catch (e: any) {
+      setListening(false);
+      Alert.alert('Voz', 'No se pudo iniciar el dictado: ' + (e?.message ?? ''));
+    }
+  };
+  const stopVoice = () => { try { ExpoSpeechRecognitionModule.stop(); } catch {} setListening(false); };
 
   // IA + medición
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
@@ -222,6 +268,13 @@ export default function TireInspectionScreen() {
       {/* Profundidad manual */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Profundidad de surco (mm)</Text>
+        <TouchableOpacity
+          style={[s.voiceBtn, { backgroundColor: listening ? '#e94560' : '#238636' }]}
+          onPress={listening ? stopVoice : startVoice}>
+          <Text style={s.voiceBtnText}>{listening ? '⏹ Detener (escuchando…)' : '🎤 Dictar medidas por voz'}</Text>
+        </TouchableOpacity>
+        <Text style={s.voiceHint}>Ej.: «interior 10, centro 12, exterior 9»</Text>
+        {heard ? <Text style={s.voiceHeard}>🗣 {heard}</Text> : null}
         <View style={s.depthRow}>
           {[['Interior', inner, setInner], ['Centro', center, setCenter], ['Exterior', outer, setOuter]].map(([label, val, setVal]) => (
             <View key={label as string} style={s.depthField}>
@@ -328,6 +381,10 @@ const s = StyleSheet.create({
   bigDepth: { fontSize: 36, fontWeight: '800', marginVertical: 4 },
   measureNote: { fontSize: 12, color: '#8892b0' },
   measureHint: { fontSize: 11, color: '#58a6ff', marginTop: 6 },
+  voiceBtn: { borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 6 },
+  voiceBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  voiceHint: { color: '#8892b0', fontSize: 12, marginBottom: 4 },
+  voiceHeard: { color: '#58a6ff', fontSize: 13, marginBottom: 8, fontStyle: 'italic' },
   depthRow: { flexDirection: 'row', gap: 12 },
   depthField: { flex: 1 },
   depthLabel: { fontSize: 12, color: '#8892b0', marginBottom: 6 },

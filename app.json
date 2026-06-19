@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d1117"
       },
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -39,6 +39,14 @@
         {
           "photosPermission": "Permite seleccionar fotos de neumáticos.",
           "cameraPermission": "Permite a TireInspect usar la cámara para fotografiar neumáticos."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permite dictar las medidas de profundidad por voz.",
+          "speechRecognitionPermission": "Permite reconocer la voz para llenar las medidas.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ]
     ],
