@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { searchVehiclesByPlate } from '../../services/storage/database';
 import { searchVehicleByPlateAPI, fetchMyFleet } from '../../services/api/vehicles';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useInspectionStore } from '../../store/inspectionStore';
 import { useAuthStore } from '../../store/authStore';
 import type { Vehicle } from '../../types';
@@ -63,6 +64,30 @@ export default function VehicleLookupScreen() {
     navigation.navigate('VehicleForm', { plate: query.toUpperCase() });
   };
 
+  // ── Buscar placa por voz ──
+  const [listening, setListening] = useState(false);
+  const NUMW: Record<string, string> = { cero:'0', uno:'1', dos:'2', tres:'3', cuatro:'4', cinco:'5', seis:'6', siete:'7', ocho:'8', nueve:'9' };
+  const normalizePlate = (text: string) => {
+    const tokens = text.toLowerCase().replace(/[-.]/g, ' ').split(/\s+/);
+    let out = '';
+    for (const tk of tokens) out += (NUMW[tk] ?? tk);
+    return out.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  };
+  useSpeechRecognitionEvent('result', (e: any) => {
+    const txt = e.results?.[0]?.transcript ?? '';
+    if (txt) setQuery(normalizePlate(txt));
+  });
+  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechRecognitionEvent('error', () => setListening(false));
+  const startPlateVoice = async () => {
+    try {
+      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Micrófono', 'Habilita el micrófono para dictar la placa.'); return; }
+      setListening(true);
+      ExpoSpeechRecognitionModule.start({ lang: 'es-PE', interimResults: true, continuous: false });
+    } catch { setListening(false); }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Nueva Inspección</Text>
@@ -79,6 +104,9 @@ export default function VehicleLookupScreen() {
           returnKeyType="search"
           onSubmitEditing={handleSearch}
         />
+        <TouchableOpacity style={[styles.searchBtn, { backgroundColor: listening ? '#e94560' : '#238636' }]} onPress={startPlateVoice}>
+          <Text style={styles.searchBtnText}>{listening ? '🎤…' : '🎤'}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
           {loading
             ? <ActivityIndicator color="#fff" size="small" />
@@ -86,8 +114,9 @@ export default function VehicleLookupScreen() {
           }
         </TouchableOpacity>
       </View>
+      <Text style={{ color: '#8892b0', fontSize: 12, marginBottom: 8 }}>{results.length} unidades · toca 🎤 y di la placa</Text>
 
-      {searched && !loading && (
+      {!loading && (
         <>
           <FlatList
             data={results}

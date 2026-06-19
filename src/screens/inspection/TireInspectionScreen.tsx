@@ -110,8 +110,10 @@ export default function TireInspectionScreen() {
   if (!tire) { navigation.goBack(); return null; }
 
   const depths = [inner, center, outer].map(Number).filter(Boolean);
-  const avgDepth = depths.length ? depths.reduce((a, b) => a + b, 0) / depths.length : null;
-  const recommendation = calcRecommendation(avgDepth, pattern);
+  // La medida que predomina en informes es la MENOR (la más desgastada)
+  const minDepth = depths.length ? Math.min(...depths) : null;
+  const avgDepth = minDepth; // usar la menor como referencia principal
+  const recommendation = calcRecommendation(minDepth, pattern);
   const recColor = REC_COLOR[recommendation];
 
   const takePhoto = async (): Promise<string | null> => {
