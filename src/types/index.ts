@@ -56,6 +56,7 @@ export interface TireInspection {
   conditionScore?: number;    // 0-100
   remainingLifePct?: number;
   pressurePsi?: number;
+  knownDepthMm?: number;
   photos: TirePhoto[];
   recommendation: TireCondition;
   notes?: string;

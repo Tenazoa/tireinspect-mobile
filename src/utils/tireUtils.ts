@@ -1,16 +1,22 @@
 import type { TireCondition, WearPattern } from '../types';
 
-export function calcRecommendation(depthMm: number | null, pattern: WearPattern): TireCondition {
-  // Patrón de desgaste irregular siempre amerita vigilancia mínima
-  const patternPenalty = ['diagonal', 'cupping', 'patchy'].includes(pattern);
-
-  if (depthMm === null) return patternPenalty ? 'monitor' : 'ok';
-
-  if (depthMm <= 1.6) return 'replace_now';
-  if (depthMm <= 2.5) return patternPenalty ? 'replace_now' : 'replace_soon';
-  if (depthMm <= 4.0) return patternPenalty ? 'replace_soon' : 'monitor';
-  return patternPenalty ? 'monitor' : 'ok';
+export function calcRecommendation(
+  depthMm: number | null,
+  pattern: WearPattern,
+  opts?: { vehicleType?: string; position?: string },
+): TireCondition {
+  if (depthMm === null) {
+    return ['diagonal', 'cupping', 'patchy'].includes(pattern) ? 'monitor' : 'ok';
+  }
+  // Umbrales TYMSAC: delanteras tracto (P01/P02) <=5 urgente; posteriores/carretas <=3 urgente
+  const front = opts?.vehicleType === 'truck' && (opts?.position === 'P01' || opts?.position === 'P02');
+  const crit = front ? 5.0 : 3.0;
+  if (depthMm <= crit) return 'replace_now';
+  if (depthMm < 6.0) return 'replace_soon';   // 4-6 próximo a cambiar
+  return 'ok';                                 // >=6 óptimo
 }
+
+export const MAX_TREAD_MM = 24;
 
 export function conditionScore(depthMm: number): number {
   // 0-100 basado en profundidad. Nueva llanta ~8mm = 100

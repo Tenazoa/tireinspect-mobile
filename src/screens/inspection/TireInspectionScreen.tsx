@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   StyleSheet, Image, Alert, ActivityIndicator,
@@ -9,7 +9,7 @@ import { generateUUID as uuidv4 } from '../../utils/uuid';
 import { useInspectionStore } from '../../store/inspectionStore';
 import { TIRE_POSITION_LABELS, WEAR_PATTERNS } from '../../utils/constants';
 import type { TirePosition, WearPattern, TirePhoto } from '../../types';
-import { calcRecommendation } from '../../utils/tireUtils';
+import { calcRecommendation, MAX_TREAD_MM } from '../../utils/tireUtils';
 import {
   analyzeTirePhoto, measureWithReference, wearLevelColor, confidenceLabel,
   type AIAnalysisResult, type MeasurementResult,
@@ -56,6 +56,7 @@ export default function TireInspectionScreen() {
   const [saving, setSaving] = useState(false);
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState('');
+  const handleSaveRef = useRef<(() => void) | undefined>(undefined);
 
   // ── Dictado por voz de las medidas (interior/centro/exterior) ──
   const wordToNum = (w: string): string | null => {
@@ -83,6 +84,12 @@ export default function TireInspectionScreen() {
     const txt = e.results?.[0]?.transcript ?? '';
     setHeard(txt);
     if (txt) parseMeasures(txt);
+    // Guardar por voz: "guardar" / "registrar" / "finalizar"
+    if (/guardar|registrar|finaliza|listo/i.test(txt)) {
+      try { ExpoSpeechRecognitionModule.stop(); } catch {}
+      setListening(false);
+      setTimeout(() => handleSaveRef.current?.(), 300);
+    }
   });
   useSpeechRecognitionEvent('end', () => setListening(false));
   useSpeechRecognitionEvent('error', () => setListening(false));
@@ -113,8 +120,22 @@ export default function TireInspectionScreen() {
   // La medida que predomina en informes es la MENOR (la más desgastada)
   const minDepth = depths.length ? Math.min(...depths) : null;
   const avgDepth = minDepth; // usar la menor como referencia principal
-  const recommendation = calcRecommendation(minDepth, pattern);
+  const vehicleType = currentInspection?.vehicle?.type;
+  const recommendation = calcRecommendation(minDepth, pattern, { vehicleType, position });
   const recColor = REC_COLOR[recommendation];
+
+  // Remanente conocido (autollenado) para validar que no se ingrese más de lo actual
+  const knownDepth = (tire as any)?.knownDepthMm ?? (tire as any)?.lastDepthMm ?? null;
+  const validateDepths = (): string | null => {
+    for (const [lbl, val] of [['Interior', inner], ['Centro', center], ['Exterior', outer]] as const) {
+      if (!val) continue;
+      const n = Number(val);
+      if (isNaN(n)) continue;
+      if (n > MAX_TREAD_MM) return `${lbl}: ${n} mm supera el máximo permitido (${MAX_TREAD_MM} mm).`;
+      if (knownDepth != null && n > knownDepth + 0.5) return `${lbl}: ${n} mm es mayor que la cocada actual registrada (${knownDepth} mm). Una llanta no puede tener más cocada que antes.`;
+    }
+    return null;
+  };
 
   const takePhoto = async (): Promise<string | null> => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -161,6 +182,8 @@ export default function TireInspectionScreen() {
   };
 
   const handleSave = async () => {
+    const err = validateDepths();
+    if (err) { Alert.alert('⚠ Medida no válida', err); return; }
     setSaving(true);
     await updateTire(position, {
       brand: brand || undefined, size: size || undefined, dotCode: dotCode || undefined,
@@ -174,6 +197,7 @@ export default function TireInspectionScreen() {
     setSaving(false);
     navigation.goBack();
   };
+  handleSaveRef.current = handleSave;
 
   return (
     <ScrollView style={s.container} showsVerticalScrollIndicator={false}>
