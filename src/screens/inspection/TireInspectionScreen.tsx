@@ -74,10 +74,18 @@ export default function TireInspectionScreen() {
     const inn = grab('interior|interno|adentro|dentro|int');
     const cen = grab('centro|medio|central|centra');
     const out = grab('exterior|afuera|externo|fuera|ext');
-    if (inn) setInner(inn);
-    if (cen) setCenter(cen);
-    if (out) setOuter(out);
-    return { inn, cen, out };
+    if (inn || cen || out) {
+      if (inn) setInner(inn);
+      if (cen) setCenter(cen);
+      if (out) setOuter(out);
+      return { inn, cen, out };
+    }
+    // Sin palabras clave: tomar los números en orden (interior, centro, exterior)
+    const nums = t.split(' ').map(wordToNum).filter((x): x is string => !!x);
+    if (nums.length >= 1) setInner(nums[0]);
+    if (nums.length >= 2) setCenter(nums[1]);
+    if (nums.length >= 3) setOuter(nums[2]);
+    return { inn: nums[0], cen: nums[1], out: nums[2] };
   };
 
   useSpeechRecognitionEvent('result', (e: any) => {
@@ -121,7 +129,24 @@ export default function TireInspectionScreen() {
   const minDepth = depths.length ? Math.min(...depths) : null;
   const avgDepth = minDepth; // usar la menor como referencia principal
   const vehicleType = currentInspection?.vehicle?.type;
-  const recommendation = calcRecommendation(minDepth, pattern, { vehicleType, position });
+
+  // Detectar desgaste irregular a partir de las 3 zonas
+  const patternFromZones = (): WearPattern | null => {
+    const a = Number(inner), b = Number(center), c = Number(outer);
+    if (!a || !b || !c) return null;
+    const mn = Math.min(a, b, c), mx = Math.max(a, b, c);
+    if (mx - mn < 1.5) return 'uniform';       // diferencia pequeña = parejo
+    if (b <= a && b <= c) return 'center';      // centro más gastado
+    if (a <= b && c <= b) return 'edge_both';   // bordes más gastados
+    if (a < c) return 'edge_inner';             // interior más gastado
+    return 'edge_outer';                        // exterior más gastado
+  };
+  const zonePattern = patternFromZones();
+  const isIrregular = !!zonePattern && zonePattern !== 'uniform';
+  // patrón efectivo: el elegido manualmente, o el detectado por las zonas
+  const effectivePattern: WearPattern = pattern !== 'uniform' ? pattern : (zonePattern ?? 'uniform');
+
+  const recommendation = calcRecommendation(minDepth, effectivePattern, { vehicleType, position });
   const recColor = REC_COLOR[recommendation];
 
   // Remanente conocido (autollenado) para validar que no se ingrese más de lo actual
@@ -191,7 +216,7 @@ export default function TireInspectionScreen() {
       treadDepthCenter: center ? Number(center) : undefined,
       treadDepthOuter: outer ? Number(outer) : undefined,
       pressurePsi: pressure ? Number(pressure) : undefined,
-      wearPattern: pattern, notes: notes || undefined, photos, recommendation,
+      wearPattern: effectivePattern, notes: notes || undefined, photos, recommendation,
       conditionScore: avgDepth ? Math.round((avgDepth / 8) * 100) : aiResult?.conditionScore,
     });
     setSaving(false);
@@ -301,6 +326,16 @@ export default function TireInspectionScreen() {
         </TouchableOpacity>
         <Text style={s.voiceHint}>Ej.: «interior 10, centro 12, exterior 9»</Text>
         {heard ? <Text style={s.voiceHeard}>🗣 {heard}</Text> : null}
+        {minDepth != null && (
+          <Text style={{ color: '#58a6ff', fontSize: 13, marginBottom: 6, fontWeight: '700' }}>
+            Medida principal (la menor): {minDepth.toFixed(1)} mm
+          </Text>
+        )}
+        {isIrregular && (
+          <Text style={{ color: '#d29922', fontSize: 12, marginBottom: 8 }}>
+            ⚠ Desgaste irregular detectado ({PATTERN_CAUSE[zonePattern!] || zonePattern})
+          </Text>
+        )}
         <View style={s.depthRow}>
           {[['Interior', inner, setInner], ['Centro', center, setCenter], ['Exterior', outer, setOuter]].map(([label, val, setVal]) => (
             <View key={label as string} style={s.depthField}>
