@@ -86,8 +86,13 @@ export default function TireInspectionScreen() {
     try {
       const a = await analyzeTirePhoto(uri, currentInspection?.id ?? 'x', position, avgDepth ?? undefined, brand || undefined, size || undefined);
       setAiResult(a);
-      if (a.isTireDetected && !center && a.estimatedDepthMm > 0) setCenter(a.estimatedDepthMm.toFixed(1));
-      if (a.isTireDetected && a.wearPattern !== 'uniform' && pattern === 'uniform') setPattern(a.wearPattern);
+      if (a.isTireDetected) {
+        // Llenar las 3 zonas medidas por la IA: interior / centro / exterior
+        if (a.depthInnerMm > 0) setInner(a.depthInnerMm.toFixed(1));
+        if (a.depthCenterMm > 0) setCenter(a.depthCenterMm.toFixed(1));
+        if (a.depthOuterMm > 0) setOuter(a.depthOuterMm.toFixed(1));
+        if (a.wearPattern !== 'uniform' && pattern === 'uniform') setPattern(a.wearPattern);
+      }
     } catch {
       Alert.alert('Sin conexión', 'No se pudo analizar. Revisa tu conexión.');
     } finally { setAiLoading(false); }
@@ -177,8 +182,12 @@ export default function TireInspectionScreen() {
           ) : (
             <>
               <View style={s.metricsRow}>
-                <Metric label="Desgaste est." value={`${aiResult.estimatedDepthMm.toFixed(1)} mm`} color={wearLevelColor(aiResult.wearLevel)} sub={aiResult.wearLevelLabel} />
-                <Metric label="Condición" value={`${aiResult.conditionScore}/100`} color={wearLevelColor(aiResult.wearLevel)} sub="" />
+                <Metric label="Interior" value={`${aiResult.depthInnerMm.toFixed(1)} mm`} color={wearLevelColor(aiResult.wearLevel)} sub="" />
+                <Metric label="Centro" value={`${aiResult.depthCenterMm.toFixed(1)} mm`} color={wearLevelColor(aiResult.wearLevel)} sub="" />
+                <Metric label="Exterior" value={`${aiResult.depthOuterMm.toFixed(1)} mm`} color={wearLevelColor(aiResult.wearLevel)} sub="" />
+              </View>
+              <View style={s.metricsRow}>
+                <Metric label="Condición" value={`${aiResult.conditionScore}/100`} color={wearLevelColor(aiResult.wearLevel)} sub={aiResult.wearLevelLabel} />
               </View>
               {aiResult.wearPattern !== 'uniform' && (
                 <Text style={s.patternNote}>Patrón: {aiResult.wearPattern} · {PATTERN_CAUSE[aiResult.wearPattern]}</Text>

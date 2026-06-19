@@ -21,3 +21,14 @@ export async function syncVehicles(): Promise<void> {
   const { data } = await apiClient.get<Vehicle[]>('/vehicles/my-fleet');
   await Promise.all(data.map(upsertVehicle));
 }
+
+// Trae toda la flota (para mostrar las placas en la pantalla de inspección)
+export async function fetchMyFleet(): Promise<Vehicle[]> {
+  try {
+    const { data } = await apiClient.get<Vehicle[]>('/vehicles/my-fleet');
+    await Promise.all(data.map(upsertVehicle));
+    return data;
+  } catch {
+    return [];
+  }
+}

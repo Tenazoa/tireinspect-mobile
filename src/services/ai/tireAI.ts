@@ -8,6 +8,9 @@ export interface AIAnalysisResult {
   confidence: number;
   conditionScore: number;
   estimatedDepthMm: number;
+  depthInnerMm: number;
+  depthCenterMm: number;
+  depthOuterMm: number;
   wearPattern: WearPattern;
   patternConfidence: number;
   defects: string[];
@@ -49,6 +52,9 @@ export async function analyzeTirePhoto(
     confidence: data.confidence,
     conditionScore: data.condition_score,
     estimatedDepthMm: data.estimated_depth_mm,
+    depthInnerMm: data.depth_inner_mm ?? data.estimated_depth_mm,
+    depthCenterMm: data.depth_center_mm ?? data.estimated_depth_mm,
+    depthOuterMm: data.depth_outer_mm ?? data.estimated_depth_mm,
     wearPattern: data.wear_pattern,
     patternConfidence: data.pattern_confidence,
     defects: data.defects ?? [],

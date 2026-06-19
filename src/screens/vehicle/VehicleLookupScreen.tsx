@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { searchVehiclesByPlate } from '../../services/storage/database';
-import { searchVehicleByPlateAPI } from '../../services/api/vehicles';
+import { searchVehicleByPlateAPI, fetchMyFleet } from '../../services/api/vehicles';
 import { useInspectionStore } from '../../store/inspectionStore';
 import { useAuthStore } from '../../store/authStore';
 import type { Vehicle } from '../../types';
@@ -18,30 +18,40 @@ export default function VehicleLookupScreen() {
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Vehicle[]>([]);
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
+  // Cargar toda la flota al abrir, para mostrar las placas
+  useEffect(() => {
+    setLoading(true);
+    fetchMyFleet()
+      .then((list) => { setAllVehicles(list); setResults(list); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Filtrar la lista mientras se escribe
+  useEffect(() => {
+    const q = query.trim().toUpperCase();
+    if (!q) { setResults(allVehicles); return; }
+    setResults(allVehicles.filter(v =>
+      v.plate?.toUpperCase().includes(q) ||
+      `${v.brand} ${v.model}`.toUpperCase().includes(q)));
+  }, [query, allVehicles]);
+
   const handleSearch = useCallback(async () => {
     if (query.trim().length < 2) return;
-    setLoading(true);
-    setSearched(true);
-    try {
-      // primero busca local
-      const local = await searchVehiclesByPlate(query);
-      if (local.length > 0) {
-        setResults(local);
-      } else {
-        // si no hay locales, consulta la API
+    // si no está en la flota cargada, consultar al servidor
+    if (results.length === 0) {
+      setLoading(true); setSearched(true);
+      try {
         const remote = await searchVehicleByPlateAPI(query);
         setResults(remote);
-      }
-    } catch {
-      Alert.alert('Sin conexión', 'No se encontraron vehículos en local ni en el servidor.');
-      setResults([]);
-    } finally {
-      setLoading(false);
+      } catch {
+        Alert.alert('Sin conexión', 'No se encontraron vehículos.');
+      } finally { setLoading(false); }
     }
-  }, [query]);
+  }, [query, results.length]);
 
   const handleSelect = (vehicle: Vehicle) => {
     if (!inspector) return;
