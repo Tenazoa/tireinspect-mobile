@@ -15,6 +15,7 @@ import ProfileTab             from './src/screens/tabs/ProfileTab';
 import InspectionFlowScreen   from './src/screens/inspection/InspectionFlowScreen';
 import TireInspectionScreen   from './src/screens/inspection/TireInspectionScreen';
 import InspectionReportScreen from './src/screens/inspection/InspectionReportScreen';
+import InspectionViewScreen    from './src/screens/inspection/InspectionViewScreen';
 import NewVehicleScreen       from './src/screens/vehicle/NewVehicleScreen';
 
 const Stack = createNativeStackNavigator();
@@ -84,6 +85,7 @@ export default function App() {
             <Stack.Screen name="InspectionFlow"   component={InspectionFlowScreen}   options={{ title: 'Inspección' }} />
             <Stack.Screen name="TireInspection"   component={TireInspectionScreen}   options={{ title: 'Llanta' }} />
             <Stack.Screen name="InspectionReport" component={InspectionReportScreen} options={{ title: 'Reporte' }} />
+            <Stack.Screen name="InspectionView"   component={InspectionViewScreen}   options={{ title: 'Detalle de inspección' }} />
             <Stack.Screen name="NewVehicle"       component={NewVehicleScreen}       options={{ title: 'Nuevo vehículo' }} />
           </>
         )}

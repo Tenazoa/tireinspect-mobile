@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { getRecentInspections } from '../../services/storage/database';
 import { fetchCloudInspections } from '../../services/api/inspections';
 import type { Inspection } from '../../types';
@@ -8,6 +9,7 @@ const REC_COLOR: Record<string,string> = { ok:'#3fb950', monitor:'#d29922', repl
 const REC_LABEL: Record<string,string> = { ok:'OK', monitor:'Vigilar', replace_soon:'Cambio próximo', replace_now:'Urgente' };
 
 export default function HistoryTab() {
+  const navigation = useNavigation<any>();
   const [items, setItems] = useState<Inspection[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const load = async () => {
@@ -46,7 +48,7 @@ export default function HistoryTab() {
       renderItem={({ item }) => {
         const rec = worstRec(item); const color = REC_COLOR[rec];
         return (
-          <View style={[s.card, { borderLeftColor: color }]}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('InspectionView', { id: item.id })} style={[s.card, { borderLeftColor: color }]}>
             <View style={s.cardTop}>
               <Text style={s.plate}>{item.vehicle?.plate ?? '—'}</Text>
               <View style={[s.badge, { backgroundColor: color+'22' }]}>
@@ -63,7 +65,7 @@ export default function HistoryTab() {
                 </View>
               ))}
             </View>
-          </View>
+          </TouchableOpacity>
         );
       }}
       contentContainerStyle={{ paddingBottom:40 }}
