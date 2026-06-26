@@ -51,8 +51,8 @@ export default function NewInspectionTab() {
 
   const handleSelect = (vehicle: Vehicle) => {
     if (!inspector) return;
-    startInspection(vehicle, inspector.id);
-    navigation.navigate('InspectionFlow');
+    // Mostrar las llantas de la unidad (km/cocada/vida) + opciones PDF / inspeccionar
+    navigation.navigate('InspectionView', { id: `seed-${vehicle.id}`, vehicle });
   };
 
   return (
