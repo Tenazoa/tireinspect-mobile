@@ -9,6 +9,14 @@ import { syncPendingInspections } from '../../services/sync/syncService';
 const REC_COLOR: Record<string,string> = { ok:'#3fb950', monitor:'#d29922', replace_soon:'#f78166', replace_now:'#e94560' };
 const REC_LABEL: Record<string,string> = { ok:'OK', monitor:'Vigilar', replace_soon:'Cambio próximo', replace_now:'CAMBIO URGENTE' };
 
+// Etiqueta de posición: usa el nombre si existe, si no el código (P01, RPT, etc.)
+const posLabel = (code: string) => TIRE_POSITION_LABELS[code as TirePosition] ?? code;
+// Profundidad principal = la MENOR de las 3 zonas
+const minDepth = (t: any): number | null => {
+  const vals = [t.treadDepthInner, t.treadDepthCenter, t.treadDepthOuter].filter((v: any) => v != null && v !== '');
+  return vals.length ? Math.min(...vals.map(Number)) : null;
+};
+
 export default function InspectionReportScreen() {
   const navigation = useNavigation<any>();
   const { currentInspection, discardInspection } = useInspectionStore();
@@ -23,7 +31,7 @@ export default function InspectionReportScreen() {
       'REPORTE DE INSPECCIÓN - TireInspect',
       `Vehículo: ${vehicle?.plate} (${vehicle?.brand} ${vehicle?.model} ${vehicle?.year})`,
       `Fecha: ${new Date().toLocaleDateString('es-PE')}`, '',
-      ...tires.map(t => `${TIRE_POSITION_LABELS[t.position as TirePosition]}: ${t.treadDepthCenter ? t.treadDepthCenter.toFixed(1)+'mm' : 'Sin med.'} — ${REC_LABEL[t.recommendation]}`),
+      ...tires.map(t => { const d = minDepth(t); return `${posLabel(t.position)}: ${d != null ? d.toFixed(1)+'mm' : 'Sin med.'} — ${REC_LABEL[t.recommendation]}`; }),
       '', critical > 0 ? `⚠ ${critical} llanta(s) requieren cambio URGENTE` : '✓ Flota en buen estado general',
     ];
     await Share.share({ message: lines.join('\n'), title: `Inspección ${vehicle?.plate}` });
@@ -64,12 +72,12 @@ export default function InspectionReportScreen() {
         return (
           <View key={tire.id} style={[s.tireCard, { borderLeftColor: color }]}>
             <View style={s.tireHeader}>
-              <Text style={s.tirePos}>{TIRE_POSITION_LABELS[tire.position as TirePosition]}</Text>
+              <Text style={s.tirePos}>{posLabel(tire.position)}</Text>
               <View style={[s.badge, { backgroundColor: color+'22' }]}>
                 <Text style={[s.badgeText, { color }]}>{REC_LABEL[tire.recommendation]}</Text>
               </View>
             </View>
-            {tire.treadDepthCenter != null && <Text style={[s.depth, { color }]}>{tire.treadDepthCenter.toFixed(1)} mm</Text>}
+            {minDepth(tire) != null && <Text style={[s.depth, { color }]}>{minDepth(tire)!.toFixed(1)} mm <Text style={s.meta}>(menor)</Text></Text>}
             {tire.brand && <Text style={s.brand}>{tire.brand} {tire.model ?? ''} · {tire.size ?? ''}</Text>}
             {tire.pressurePsi && <Text style={s.meta}>Presión: {tire.pressurePsi} PSI</Text>}
             {tire.notes && <Text style={s.notes}>"{tire.notes}"</Text>}

@@ -152,12 +152,16 @@ export default function TireInspectionScreen() {
   // Remanente conocido (autollenado) para validar que no se ingrese más de lo actual
   const knownDepth = (tire as any)?.knownDepthMm ?? (tire as any)?.lastDepthMm ?? null;
   const validateDepths = (): string | null => {
+    // 1) Tope físico por zona
     for (const [lbl, val] of [['Interior', inner], ['Centro', center], ['Exterior', outer]] as const) {
       if (!val) continue;
       const n = Number(val);
       if (isNaN(n)) continue;
       if (n > MAX_TREAD_MM) return `${lbl}: ${n} mm supera el máximo permitido (${MAX_TREAD_MM} mm).`;
-      if (knownDepth != null && n > knownDepth + 0.5) return `${lbl}: ${n} mm es mayor que la cocada actual registrada (${knownDepth} mm). Una llanta no puede tener más cocada que antes.`;
+    }
+    // 2) Solo la MENOR (punto de inspección) no puede ser mayor que la cocada anterior
+    if (knownDepth != null && minDepth != null && minDepth > knownDepth + 0.5) {
+      return `La medida menor (${minDepth} mm) es mayor que la cocada registrada antes (${knownDepth} mm). Una llanta no puede ganar cocada. Verifica las medidas.`;
     }
     return null;
   };
