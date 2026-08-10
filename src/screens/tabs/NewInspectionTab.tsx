@@ -14,13 +14,19 @@ export default function NewInspectionTab() {
   const [query, setQuery] = useState('');
   const [all, setAll] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [listening, setListening] = useState(false);
 
   // Cargar toda la flota al abrir → mostrar las placas
-  useEffect(() => {
+  const loadFleet = React.useCallback(() => {
     setLoading(true);
-    fetchMyFleet().then(setAll).finally(() => setLoading(false));
+    setLoadError(false);
+    fetchMyFleet()
+      .then((data) => { setAll(data); setLoadError(false); })
+      .catch(() => { setAll([]); setLoadError(true); })
+      .finally(() => setLoading(false));
   }, []);
+  useEffect(() => { loadFleet(); }, [loadFleet]);
 
   const q = query.trim().toUpperCase();
   const results = !q ? all : all.filter(v =>
@@ -66,10 +72,24 @@ export default function NewInspectionTab() {
           <Text style={s.micText}>{listening ? '🎤…' : '🎤'}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={s.count}>{results.length} unidades {query ? '(filtradas)' : '· toca una para inspeccionar'}</Text>
+      <Text style={s.count}>
+        {loadError && all.length === 0
+          ? 'No se pudo cargar la flota'
+          : `${results.length} unidades ${query ? '(filtradas)' : '· toca una para inspeccionar'}`}
+      </Text>
 
       {loading ? (
-        <ActivityIndicator color="#58a6ff" style={{ marginTop: 30 }} />
+        <View style={{ marginTop: 30, alignItems: 'center' }}>
+          <ActivityIndicator color="#58a6ff" />
+          <Text style={s.emptyText}>Cargando flota… (el servidor puede tardar en despertar)</Text>
+        </View>
+      ) : loadError && all.length === 0 ? (
+        <View style={s.empty}>
+          <Text style={s.emptyText}>No se pudo cargar la flota. El servidor puede estar despertando.</Text>
+          <TouchableOpacity style={s.newBtn} onPress={loadFleet}>
+            <Text style={s.newBtnText}>↻ Reintentar</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList data={results} keyExtractor={v => v.id}
           keyboardShouldPersistTaps="handled"

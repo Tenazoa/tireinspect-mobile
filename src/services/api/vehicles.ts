@@ -22,13 +22,22 @@ export async function syncVehicles(): Promise<void> {
   await Promise.all(data.map(upsertVehicle));
 }
 
-// Trae toda la flota (para mostrar las placas en la pantalla de inspección)
+// Trae toda la flota (para mostrar las placas en la pantalla de inspección).
+// Render (plan gratis) se duerme: la 1ra llamada puede tardar/expirar.
+// Reintenta con espera para que la flota cargue en vez de quedar vacía.
 export async function fetchMyFleet(): Promise<Vehicle[]> {
-  try {
-    const { data } = await apiClient.get<Vehicle[]>('/vehicles/my-fleet');
-    await Promise.all(data.map(upsertVehicle));
-    return data;
-  } catch {
-    return [];
+  let lastErr: any = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { data } = await apiClient.get<Vehicle[]>('/vehicles/my-fleet');
+      await Promise.all(data.map(upsertVehicle));
+      return data;
+    } catch (e) {
+      lastErr = e;
+      // Espera creciente mientras el servidor despierta (2s, 4s)
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    }
   }
+  // Falló tras reintentos: propaga para que la pantalla ofrezca "Reintentar"
+  throw lastErr ?? new Error('No se pudo cargar la flota');
 }
