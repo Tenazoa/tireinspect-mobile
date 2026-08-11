@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } fr
 import { useNavigation } from '@react-navigation/native';
 import { getRecentInspections } from '../../services/storage/database';
 import { fetchCloudInspections } from '../../services/api/inspections';
+import { syncPendingInspections } from '../../services/sync/syncService';
 import type { Inspection } from '../../types';
 
 const REC_COLOR: Record<string,string> = { ok:'#3fb950', monitor:'#d29922', replace_soon:'#f78166', replace_now:'#e94560' };
@@ -13,6 +14,9 @@ export default function HistoryTab() {
   const [items, setItems] = useState<Inspection[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const load = async () => {
+    // Auto-sincroniza lo que quedó pendiente (p.ej. inspecciones sin internet)
+    // para que aparezcan en la nube/web sin depender del botón de Perfil.
+    try { await syncPendingInspections(); } catch {}
     const local = await getRecentInspections(50);
     const byId: Record<string, any> = {};
     // primero la nube (resumen), luego local sobreescribe (tiene llantas completas)
