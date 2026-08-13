@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Share, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { useInspectionStore } from '../../store/inspectionStore';
 import { TIRE_POSITION_LABELS } from '../../utils/constants';
 import type { TirePosition } from '../../types';
@@ -26,15 +28,67 @@ export default function InspectionReportScreen() {
   const critical = tires.filter(t => t.recommendation === 'replace_now').length;
   const soon = tires.filter(t => t.recommendation === 'replace_soon').length;
 
+  const buildHtml = () => {
+    const rows = tires.map(t => {
+      const d = minDepth(t);
+      const color = REC_COLOR[t.recommendation] || '#334155';
+      const zonas = [t.treadDepthInner, t.treadDepthCenter, t.treadDepthOuter]
+        .map((v: any) => (v != null && v !== '' ? Number(v).toFixed(0) : '—')).join(' · ');
+      return `<tr>
+        <td class="pos">${posLabel(t.position)}</td>
+        <td class="depth" style="color:${color}"><b>${d != null ? d.toFixed(1) + ' mm' : 'Sin med.'}</b></td>
+        <td class="zonas">${zonas}</td>
+        <td>${t.brand || ''} ${t.model || ''}</td>
+        <td><span class="badge" style="background:${color}22;color:${color}">${REC_LABEL[t.recommendation]}</span></td>
+      </tr>`;
+    }).join('');
+    const estado = critical > 0
+      ? `<div class="alert crit">⚠ ${critical} llanta(s) requieren cambio URGENTE</div>`
+      : `<div class="alert ok">✓ Flota en buen estado general</div>`;
+    return `<html><head><meta charset="utf-8"><style>
+      *{font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}
+      body{margin:0;color:#1e293b}
+      .hdr{background:#0f2050;color:#fff;padding:22px 26px}
+      .hdr h1{margin:0;font-size:22px}
+      .hdr p{margin:4px 0 0;color:#9fd3ff;font-size:13px}
+      .meta{padding:16px 26px;background:#f1f5f9;font-size:13px}
+      .meta b{color:#0f2050}
+      table{width:100%;border-collapse:collapse;margin:0 26px;width:calc(100% - 52px)}
+      th{background:#e2e8f0;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;color:#475569}
+      td{padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px}
+      td.pos{font-weight:700;color:#0f2050}
+      td.depth{font-size:15px}
+      td.zonas{color:#64748b;font-size:12px}
+      .badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700}
+      .alert{margin:18px 26px;padding:12px 16px;border-radius:10px;font-weight:700}
+      .alert.crit{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+      .alert.ok{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+      .foot{padding:14px 26px;color:#94a3b8;font-size:11px}
+    </style></head><body>
+      <div class="hdr"><h1>🛞 TYMSAC — Reporte de Inspección</h1><p>Sistema de control de neumáticos</p></div>
+      <div class="meta">
+        <b>Vehículo:</b> ${vehicle?.plate} (${vehicle?.brand || ''} ${vehicle?.model || ''} ${vehicle?.year || ''})<br>
+        <b>Fecha:</b> ${new Date().toLocaleDateString('es-PE', { dateStyle: 'full' })}<br>
+        <b>Llantas inspeccionadas:</b> ${tires.length}
+      </div>
+      ${estado}
+      <table><thead><tr><th>Posición</th><th>Cocada (menor)</th><th>Int·Cen·Ext</th><th>Marca / Modelo</th><th>Estado</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="foot">Generado por el sistema de control de neumáticos TYMSAC · ${new Date().toLocaleString('es-PE')}</div>
+    </body></html>`;
+  };
+
   const handleShare = async () => {
-    const lines = [
-      'REPORTE DE INSPECCIÓN - TireInspect',
-      `Vehículo: ${vehicle?.plate} (${vehicle?.brand} ${vehicle?.model} ${vehicle?.year})`,
-      `Fecha: ${new Date().toLocaleDateString('es-PE')}`, '',
-      ...tires.map(t => { const d = minDepth(t); return `${posLabel(t.position)}: ${d != null ? d.toFixed(1)+'mm' : 'Sin med.'} — ${REC_LABEL[t.recommendation]}`; }),
-      '', critical > 0 ? `⚠ ${critical} llanta(s) requieren cambio URGENTE` : '✓ Flota en buen estado general',
-    ];
-    await Share.share({ message: lines.join('\n'), title: `Inspección ${vehicle?.plate}` });
+    try {
+      const { uri } = await Print.printToFileAsync({ html: buildHtml() });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Inspección ${vehicle?.plate}`, UTI: 'com.adobe.pdf' });
+      } else {
+        Alert.alert('Compartir', 'No se pudo abrir el menú de compartir.');
+      }
+    } catch (e) {
+      Alert.alert('PDF', 'No se pudo generar el PDF. Reintenta.');
+    }
   };
 
   const handleFinish = async () => {
@@ -87,7 +141,7 @@ export default function InspectionReportScreen() {
 
       <View style={s.actions}>
         <TouchableOpacity style={s.shareBtn} onPress={handleShare}>
-          <Text style={s.shareBtnText}>📤 Compartir reporte</Text>
+          <Text style={s.shareBtnText}>📄 Compartir PDF</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.finishBtn} onPress={handleFinish}>
           <Text style={s.finishBtnText}>Finalizar y volver al inicio</Text>
