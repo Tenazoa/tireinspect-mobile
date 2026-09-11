@@ -17,20 +17,36 @@ export default function NewInspectionTab() {
   const [loadError, setLoadError] = useState(false);
   const [listening, setListening] = useState(false);
 
-  // Cargar toda la flota al abrir → mostrar las placas
-  const loadFleet = React.useCallback(() => {
+  // Cargar toda la flota al abrir. Render (plan gratis) puede estar dormido y
+  // tardar ~1 min en despertar, así que reintentamos solo varias veces antes
+  // de mostrar el error (en vez de fallar al primer intento).
+  const loadFleet = React.useCallback(async () => {
     setLoading(true);
     setLoadError(false);
-    fetchMyFleet()
-      .then((data) => { setAll(data); setLoadError(false); })
-      .catch(() => { setAll([]); setLoadError(true); })
-      .finally(() => setLoading(false));
+    for (let intento = 0; intento < 3; intento++) {
+      try {
+        const data = await fetchMyFleet();
+        setAll(data);
+        setLoadError(false);
+        setLoading(false);
+        return;
+      } catch {
+        if (intento < 2) await new Promise((r) => setTimeout(r, 8000));
+      }
+    }
+    setAll([]);
+    setLoadError(true);
+    setLoading(false);
   }, []);
   useEffect(() => { loadFleet(); }, [loadFleet]);
 
-  const q = query.trim().toUpperCase();
-  const results = !q ? all : all.filter(v =>
-    v.plate?.toUpperCase().includes(q) || `${v.brand} ${v.model}`.toUpperCase().includes(q));
+  // Búsqueda tolerante: ignora guion/espacios ("T8D-866" encuentra "T8D866").
+  const qraw = query.trim().toUpperCase();
+  const q = qraw.replace(/[^A-Z0-9]/g, '');
+  const results = !qraw ? all : all.filter(v => {
+    const plate = (v.plate || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return (q && plate.includes(q)) || `${v.brand} ${v.model}`.toUpperCase().includes(qraw);
+  });
 
   // Voz para dictar la placa
   const NUMW: Record<string, string> = { cero:'0', uno:'1', dos:'2', tres:'3', cuatro:'4', cinco:'5', seis:'6', siete:'7', ocho:'8', nueve:'9' };
