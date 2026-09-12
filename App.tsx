@@ -16,6 +16,7 @@ import InspectionFlowScreen   from './src/screens/inspection/InspectionFlowScree
 import TireInspectionScreen   from './src/screens/inspection/TireInspectionScreen';
 import InspectionReportScreen from './src/screens/inspection/InspectionReportScreen';
 import InspectionViewScreen    from './src/screens/inspection/InspectionViewScreen';
+import MassInspectionScreen   from './src/screens/inspection/MassInspectionScreen';
 import NewVehicleScreen       from './src/screens/vehicle/NewVehicleScreen';
 
 const Stack = createNativeStackNavigator();
@@ -86,6 +87,7 @@ export default function App() {
             <Stack.Screen name="TireInspection"   component={TireInspectionScreen}   options={{ title: 'Llanta' }} />
             <Stack.Screen name="InspectionReport" component={InspectionReportScreen} options={{ title: 'Reporte' }} />
             <Stack.Screen name="InspectionView"   component={InspectionViewScreen}   options={{ title: 'Detalle de inspección' }} />
+            <Stack.Screen name="MassInspection"   component={MassInspectionScreen}   options={{ title: 'Inspección masiva' }} />
             <Stack.Screen name="NewVehicle"       component={NewVehicleScreen}       options={{ title: 'Nuevo vehículo' }} />
           </>
         )}

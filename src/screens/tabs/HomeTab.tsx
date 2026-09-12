@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } 
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { getRecentInspections } from '../../services/storage/database';
+import { getPendientesInspeccion } from '../../services/api/fleet';
 import type { Inspection } from '../../types';
 
 const REC_COLOR: Record<string,string> = { ok:'#3fb950', monitor:'#d29922', replace_soon:'#f78166', replace_now:'#e94560' };
@@ -13,8 +14,12 @@ export default function HomeTab() {
   const { inspector } = useAuthStore();
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
 
-  const load = async () => setInspections(await getRecentInspections(10));
+  const load = async () => {
+    setInspections(await getRecentInspections(10));
+    getPendientesInspeccion(8000).then(r => setPendientes(r.total)).catch(() => {});
+  };
   useEffect(() => { load(); }, []);
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
@@ -42,6 +47,17 @@ export default function HomeTab() {
           <Text style={s.mainBtnSub}>Buscar vehículo por placa</Text>
         </View>
       </TouchableOpacity>
+
+      {pendientes > 0 && (
+        <TouchableOpacity style={s.massBtn} onPress={() => navigation.navigate('MassInspection')}>
+          <Text style={s.mainBtnIcon}>🚛</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.mainBtnTitle}>{pendientes} unidades por inspeccionar</Text>
+            <Text style={s.mainBtnSub}>Rodaron +8,000 km · inspección masiva por km</Text>
+          </View>
+          <Text style={s.massArrow}>›</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={s.statsRow}>
         {[
@@ -91,6 +107,8 @@ const s = StyleSheet.create({
   nombre:{ fontSize:26, fontWeight:'800', color:'#e6f1ff' },
   empresa:{ fontSize:13, color:'#8892b0', marginTop:2 },
   mainBtn:{ margin:16, backgroundColor:'#1f6feb', borderRadius:14, padding:18, flexDirection:'row', alignItems:'center', gap:14 },
+  massBtn:{ marginHorizontal:16, marginBottom:4, backgroundColor:'#3d2b0d', borderWidth:1, borderColor:'#d29922', borderRadius:14, padding:16, flexDirection:'row', alignItems:'center', gap:14 },
+  massArrow:{ color:'#d29922', fontSize:26, fontWeight:'800' },
   mainBtnIcon:{ fontSize:28 },
   mainBtnTitle:{ fontSize:17, fontWeight:'700', color:'#fff' },
   mainBtnSub:{ fontSize:12, color:'#a8d4ff', marginTop:2 },

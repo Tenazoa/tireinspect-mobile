@@ -15,6 +15,25 @@ export interface FleetTireSpec {
   kmDriven?: number | null;            // km desde la última medida
 }
 
+export interface PendienteInspeccion {
+  plate: string;
+  kmRecorrido: number;
+  ultimaInspeccion: string | null;
+  cocadaMinActual: number | null;
+  cocadaMinEstimada: number | null;
+  llantas: number;
+}
+
+/** Unidades que rodaron > umbral km desde su última inspección. */
+export async function getPendientesInspeccion(km = 8000): Promise<{ total: number; items: PendienteInspeccion[] }> {
+  try {
+    const { data } = await apiClient.get(`/fleet/pendientes-inspeccion?km=${km}`);
+    return data ?? { total: 0, items: [] };
+  } catch {
+    return { total: 0, items: [] };
+  }
+}
+
 /** Trae las llantas conocidas de una placa (autollenado desde SOLOMON). */
 export async function getFleetTires(plate: string): Promise<FleetTireSpec[]> {
   try {
