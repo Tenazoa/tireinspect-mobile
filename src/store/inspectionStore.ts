@@ -49,7 +49,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         size: spec?.size ?? undefined,
         dotCode: spec?.code ?? undefined,
         pressurePsi: spec?.pressurePsi ?? undefined,
-        knownDepthMm: spec?.lastDepthMm ?? undefined,
+        // cocada estimada por km como valor conocido de partida (autollenado)
+        knownDepthMm: spec?.projectedDepthMm ?? spec?.lastDepthMm ?? undefined,
         photos: [],
         recommendation: 'ok',
         inspectedAt: new Date().toISOString(),
@@ -107,7 +108,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     const inspectionId = uuidv4() as string;
     const tires: TireInspection[] = positions.map((position) => {
       const spec = byPos[position];
-      const depth = spec?.lastDepthMm ?? undefined;
+      // cocada ESTIMADA por km recorrido (si no, la última conocida)
+      const depth = spec?.projectedDepthMm ?? spec?.lastDepthMm ?? undefined;
       return {
         id: uuidv4() as string,
         inspectionId,
@@ -117,8 +119,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         size: spec?.size ?? undefined,
         dotCode: spec?.code ?? undefined,
         pressurePsi: spec?.pressurePsi ?? undefined,
-        knownDepthMm: depth,
-        treadDepthCenter: depth,   // se toma la cocada conocida como medición
+        knownDepthMm: spec?.lastDepthMm ?? undefined,
+        treadDepthCenter: depth,   // cocada estimada por desgaste como medición
         photos: [],
         recommendation: recFromDepth(depth),
         inspectedAt: now,

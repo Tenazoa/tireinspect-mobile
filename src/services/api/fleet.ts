@@ -11,6 +11,8 @@ export interface FleetTireSpec {
   kmTotal?: number | null;
   kmLife?: number | null;
   pressurePsi?: number | null;
+  projectedDepthMm?: number | null;   // cocada estimada HOY por km recorrido
+  kmDriven?: number | null;            // km desde la última medida
 }
 
 /** Trae las llantas conocidas de una placa (autollenado desde SOLOMON). */
