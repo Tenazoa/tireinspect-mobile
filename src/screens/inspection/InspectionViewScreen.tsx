@@ -20,12 +20,13 @@ export default function InspectionViewScreen() {
   const navigation = useNavigation<any>();
   const id = route.params?.id;
   const vehicle = route.params?.vehicle;
-  const { startInspection } = useInspectionStore();
+  const { startInspection, saveGlobalInspection } = useInspectionStore();
   const { inspector } = useAuthStore();
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'crit' | 'warn' | 'ok'>('all');
   const [openPos, setOpenPos] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchInspectionDetail(id).then(setData).finally(() => setLoading(false));
@@ -55,6 +56,29 @@ export default function InspectionViewScreen() {
     if (!inspector || !vehicle) return;
     startInspection(vehicle, inspector.id);
     navigation.navigate('InspectionFlow');
+  };
+  const guardarGlobal = () => {
+    if (!inspector || !vehicle) return;
+    Alert.alert(
+      'Guardar inspección de la unidad',
+      `Se guardará la inspección de las ${(data?.tires ?? []).length} llantas de ${vehicle.plate} con la cocada conocida de SOLOMON, todas de una vez. ¿Confirmar?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Guardar',
+          onPress: async () => {
+            setSaving(true);
+            try {
+              const n = await saveGlobalInspection(vehicle, inspector.id);
+              Alert.alert('✅ Inspección guardada', `Se registró la inspección de ${n} llantas de ${vehicle.plate}.`,
+                [{ text: 'OK', onPress: () => navigation.goBack() }]);
+            } catch {
+              Alert.alert('Error', 'No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
+            } finally { setSaving(false); }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) return <View style={s.center}><ActivityIndicator color="#58a6ff" /></View>;
@@ -100,6 +124,14 @@ export default function InspectionViewScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Guardar la inspección de TODA la unidad de una vez */}
+      {vehicle && (
+        <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={guardarGlobal} disabled={saving}>
+          <Text style={s.saveTxt}>{saving ? 'Guardando…' : '💾 Guardar inspección de la unidad'}</Text>
+          <Text style={s.saveSub}>Registra las {(data?.tires ?? []).length} llantas de una vez</Text>
+        </TouchableOpacity>
+      )}
 
       {filter !== 'all' && (
         <TouchableOpacity onPress={() => setFilter('all')} style={s.clearFilter}>
@@ -164,6 +196,9 @@ const s = StyleSheet.create({
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 12, marginBottom: 14 },
   btn: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   btnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  saveBtn: { backgroundColor: '#0d419d', borderWidth: 1, borderColor: '#1f6feb', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 14 },
+  saveTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  saveSub: { color: '#9fc5ff', fontSize: 11, marginTop: 2 },
   clearFilter: { paddingVertical: 6, marginBottom: 6 },
   clearFilterTxt: { color: '#58a6ff', fontSize: 12 },
   card: { backgroundColor: '#161b22', borderRadius: 12, padding: 14, marginBottom: 10, borderLeftWidth: 4, borderWidth: 1, borderColor: '#30363d' },
