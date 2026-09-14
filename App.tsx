@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Text, View, StyleSheet } from 'react-native';
 import { useAuthStore } from './src/store/authStore';
+import { initNotifications } from './src/services/notifications';
 
 // ── Screens ─────────────────────────────────────────────────────────────────
 import LoginScreen            from './src/screens/auth/LoginScreen';
@@ -60,7 +61,7 @@ function MainTabs() {
 export default function App() {
   const { inspector, isLoading, loadSession } = useAuthStore();
 
-  useEffect(() => { loadSession(); }, []);
+  useEffect(() => { loadSession(); initNotifications(); }, []);
 
   if (isLoading) {
     return (

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { getRecentInspections } from '../../services/storage/database';
 import { getPendientesInspeccion } from '../../services/api/fleet';
+import { syncDailyReminder } from '../../services/notifications';
 import type { Inspection } from '../../types';
 
 const REC_COLOR: Record<string,string> = { ok:'#3fb950', monitor:'#d29922', replace_soon:'#f78166', replace_now:'#e94560' };
@@ -18,7 +19,7 @@ export default function HomeTab() {
 
   const load = async () => {
     setInspections(await getRecentInspections(10));
-    getPendientesInspeccion(8000).then(r => setPendientes(r.total)).catch(() => {});
+    getPendientesInspeccion(8000).then(r => { setPendientes(r.total); syncDailyReminder(r.total); }).catch(() => {});
   };
   useEffect(() => { load(); }, []);
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
