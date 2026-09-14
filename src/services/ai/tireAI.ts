@@ -16,6 +16,18 @@ export interface AIAnalysisResult {
   defects: string[];
   recommendation: TireCondition;
   analysisNotes: string;
+  fireCode: string | null;
+  engine: string;
+}
+
+/** Daños graves que obligan cambio inmediato de la llanta. */
+export const SERIOUS_DEFECTS = ['grieta', 'corte', 'cordon_expuesto', 'cordón_expuesto', 'abultamiento', 'separacion_banda', 'separación_banda', 'burbuja', 'deformacion', 'deformación'];
+
+export function hasSeriousDefect(defects: string[]): boolean {
+  return defects.some(d => {
+    const n = d.toLowerCase();
+    return SERIOUS_DEFECTS.some(sd => n.includes(sd.replace(/_/g, ' ')) || n.includes(sd));
+  });
 }
 
 export async function analyzeTirePhoto(
@@ -60,6 +72,8 @@ export async function analyzeTirePhoto(
     defects: data.defects ?? [],
     recommendation: data.recommendation,
     analysisNotes: data.analysis_notes,
+    fireCode: data.fire_code ?? null,
+    engine: data.engine ?? 'opencv',
   };
 }
 

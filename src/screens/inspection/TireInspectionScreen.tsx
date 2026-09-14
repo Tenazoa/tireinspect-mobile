@@ -12,6 +12,7 @@ import type { TirePosition, WearPattern, TirePhoto } from '../../types';
 import { calcRecommendation, MAX_TREAD_MM } from '../../utils/tireUtils';
 import {
   analyzeTirePhoto, measureWithReference, wearLevelColor, confidenceLabel,
+  hasSeriousDefect,
   type AIAnalysisResult, type MeasurementResult,
 } from '../../services/ai/tireAI';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
@@ -146,7 +147,10 @@ export default function TireInspectionScreen() {
   // patrón efectivo: el elegido manualmente, o el detectado por las zonas
   const effectivePattern: WearPattern = pattern !== 'uniform' ? pattern : (zonePattern ?? 'uniform');
 
-  const recommendation = calcRecommendation(minDepth, effectivePattern, { vehicleType, position });
+  // Daño grave detectado por la IA (grieta/corte/cordón expuesto/abultamiento…) → cambio inmediato
+  const aiSerious = !!aiResult?.isTireDetected && hasSeriousDefect(aiResult.defects);
+  const baseRec = calcRecommendation(minDepth, effectivePattern, { vehicleType, position });
+  const recommendation = aiSerious ? 'replace_now' : baseRec;
   const recColor = REC_COLOR[recommendation];
 
   // Remanente conocido (autollenado) para validar que no se ingrese más de lo actual
@@ -190,6 +194,12 @@ export default function TireInspectionScreen() {
         if (a.depthCenterMm > 0) setCenter(a.depthCenterMm.toFixed(1));
         if (a.depthOuterMm > 0) setOuter(a.depthOuterMm.toFixed(1));
         if (a.wearPattern !== 'uniform' && pattern === 'uniform') setPattern(a.wearPattern);
+        // Código de fuego detectado → autollenar si el campo está vacío
+        if (a.fireCode && !dotCode) setDotCode(a.fireCode);
+        // Daño grave → avisar de cambio inmediato
+        if (hasSeriousDefect(a.defects)) {
+          Alert.alert('🚨 Daño grave detectado', `La IA detectó: ${a.defects.join(', ')}.\n\nSe marca la llanta para CAMBIO INMEDIATO.`);
+        }
       }
     } catch {
       Alert.alert('Sin conexión', 'No se pudo analizar. Revisa tu conexión.');
@@ -293,8 +303,18 @@ export default function TireInspectionScreen() {
               {aiResult.wearPattern !== 'uniform' && (
                 <Text style={s.patternNote}>Patrón: {aiResult.wearPattern} · {PATTERN_CAUSE[aiResult.wearPattern]}</Text>
               )}
+              {aiResult.fireCode && (
+                <Text style={s.fireCode}>🔥 Código de fuego: {aiResult.fireCode}</Text>
+              )}
               {aiResult.defects.length > 0 && (
-                <Text style={s.defects}>⚠ Defectos: {aiResult.defects.join(', ')}</Text>
+                aiSerious ? (
+                  <View style={s.seriousBox}>
+                    <Text style={s.seriousTitle}>🚨 DAÑO GRAVE · CAMBIO INMEDIATO</Text>
+                    <Text style={s.seriousText}>{aiResult.defects.join(', ')}</Text>
+                  </View>
+                ) : (
+                  <Text style={s.defects}>⚠ Defectos: {aiResult.defects.join(', ')}</Text>
+                )
               )}
             </>
           )}
@@ -368,7 +388,7 @@ export default function TireInspectionScreen() {
         {[
           { label: 'Marca', val: brand, set: setBrand, ph: 'Michelin...' },
           { label: 'Medida', val: size, set: setSize, ph: '295/80R22.5' },
-          { label: 'Código DOT', val: dotCode, set: setDotCode, ph: 'XXXX 0124' },
+          { label: 'Código de fuego / DOT', val: dotCode, set: setDotCode, ph: 'Ej. 19885' },
           { label: 'Presión (PSI)', val: pressure, set: setPressure, ph: '110', num: true },
         ].map(f => (
           <View key={f.label} style={s.field}>
@@ -443,6 +463,10 @@ const s = StyleSheet.create({
   metricSub: { fontSize: 11, color: '#8892b0', marginTop: 2 },
   patternNote: { fontSize: 12, color: '#d29922', marginTop: 4 },
   defects: { fontSize: 12, color: '#f78166', marginTop: 6 },
+  fireCode: { fontSize: 13, color: '#ffa657', marginTop: 6, fontWeight: '700' },
+  seriousBox: { marginTop: 8, backgroundColor: '#e9456022', borderWidth: 1, borderColor: '#e94560', borderRadius: 8, padding: 10 },
+  seriousTitle: { color: '#e94560', fontWeight: '800', fontSize: 13 },
+  seriousText: { color: '#f78166', fontSize: 12, marginTop: 3, textTransform: 'capitalize' },
   bigDepth: { fontSize: 36, fontWeight: '800', marginVertical: 4 },
   measureNote: { fontSize: 12, color: '#8892b0' },
   measureHint: { fontSize: 11, color: '#58a6ff', marginTop: 6 },

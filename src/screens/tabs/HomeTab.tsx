@@ -59,6 +59,15 @@ export default function HomeTab() {
         </TouchableOpacity>
       )}
 
+      <TouchableOpacity style={s.rotBtn} onPress={() => navigation.navigate('Rotation')}>
+        <Text style={s.mainBtnIcon}>🔄</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rotTitle}>Rotación de llantas</Text>
+          <Text style={s.rotSub}>Empareja el desgaste de una unidad</Text>
+        </View>
+        <Text style={s.rotArrow}>›</Text>
+      </TouchableOpacity>
+
       <View style={s.statsRow}>
         {[
           { label:'Hoy', value: inspections.filter(i => i.createdAt?.startsWith(new Date().toISOString().slice(0,10))).length },
@@ -109,6 +118,10 @@ const s = StyleSheet.create({
   mainBtn:{ margin:16, backgroundColor:'#1f6feb', borderRadius:14, padding:18, flexDirection:'row', alignItems:'center', gap:14 },
   massBtn:{ marginHorizontal:16, marginBottom:4, backgroundColor:'#3d2b0d', borderWidth:1, borderColor:'#d29922', borderRadius:14, padding:16, flexDirection:'row', alignItems:'center', gap:14 },
   massArrow:{ color:'#d29922', fontSize:26, fontWeight:'800' },
+  rotBtn:{ marginHorizontal:16, marginBottom:8, backgroundColor:'#161b22', borderWidth:1, borderColor:'#30363d', borderRadius:14, padding:16, flexDirection:'row', alignItems:'center', gap:14 },
+  rotTitle:{ fontSize:16, fontWeight:'700', color:'#e6f1ff' },
+  rotSub:{ fontSize:12, color:'#8892b0', marginTop:2 },
+  rotArrow:{ color:'#8892b0', fontSize:26, fontWeight:'800' },
   mainBtnIcon:{ fontSize:28 },
   mainBtnTitle:{ fontSize:17, fontWeight:'700', color:'#fff' },
   mainBtnSub:{ fontSize:12, color:'#a8d4ff', marginTop:2 },
