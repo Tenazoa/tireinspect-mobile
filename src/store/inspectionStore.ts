@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { generateUUID as uuidv4 } from '../utils/uuid';
 import type { Inspection, TireInspection, TirePosition, Vehicle } from '../types';
-import { saveInspection } from '../services/storage/database';
+import { saveInspection, markInspectionSynced } from '../services/storage/database';
 import { getFleetTires, type FleetTireSpec } from '../services/api/fleet';
 import { syncInspection } from '../services/api/inspections';
 
@@ -140,7 +140,7 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     set({ currentInspection: inspection });
     await saveInspection(inspection);
     // Subir al backend de una vez (best-effort; si falla, el syncService lo reintenta)
-    try { await syncInspection(inspection); } catch {}
+    try { await syncInspection(inspection); await markInspectionSynced(inspection.id); } catch {}
     return tires.length;
   },
 
