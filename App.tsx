@@ -3,9 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, StyleSheet, AppState } from 'react-native';
 import { useAuthStore } from './src/store/authStore';
 import { initNotifications } from './src/services/notifications';
+import { syncPendingInspections } from './src/services/sync/syncService';
 
 // ── Screens ─────────────────────────────────────────────────────────────────
 import LoginScreen            from './src/screens/auth/LoginScreen';
@@ -62,6 +63,22 @@ export default function App() {
   const { inspector, isLoading, loadSession } = useAuthStore();
 
   useEffect(() => { loadSession(); initNotifications(); }, []);
+
+  // Inspecciones hechas sin señal: se suben solas al abrir la app, al volver a
+  // ella y cada 2 minutos (si no hay internet, falla en silencio y reintenta).
+  useEffect(() => {
+    if (!inspector) return;
+    let corriendo = false;
+    const intentar = async () => {
+      if (corriendo) return;
+      corriendo = true;
+      try { await syncPendingInspections(); } catch {} finally { corriendo = false; }
+    };
+    intentar();
+    const sub = AppState.addEventListener('change', st => { if (st === 'active') intentar(); });
+    const id = setInterval(intentar, 2 * 60 * 1000);
+    return () => { sub.remove(); clearInterval(id); };
+  }, [inspector]);
 
   if (isLoading) {
     return (

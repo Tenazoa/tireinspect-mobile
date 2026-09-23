@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
-import { getRecentInspections } from '../../services/storage/database';
+import { getRecentInspections, getPendingInspections } from '../../services/storage/database';
 import { getPendientesInspeccion } from '../../services/api/fleet';
 import { syncDailyReminder } from '../../services/notifications';
 import type { Inspection } from '../../types';
@@ -16,9 +16,11 @@ export default function HomeTab() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pendientes, setPendientes] = useState(0);
+  const [sinSubir, setSinSubir] = useState(0);
 
   const load = async () => {
     setInspections(await getRecentInspections(10));
+    getPendingInspections().then(p => setSinSubir(p.length)).catch(() => {});
     getPendientesInspeccion(8000).then(r => { setPendientes(r.total); syncDailyReminder(r.total); }).catch(() => {});
   };
   useEffect(() => { load(); }, []);
@@ -40,6 +42,13 @@ export default function HomeTab() {
         <Text style={s.nombre}>{inspector?.name ?? 'Inspector'}</Text>
         <Text style={s.empresa}>{inspector?.company}</Text>
       </View>
+
+      {sinSubir > 0 && (
+        <View style={s.offline}>
+          <Text style={s.offlineTxt}>📶 {sinSubir} inspección{sinSubir > 1 ? 'es' : ''} guardada{sinSubir > 1 ? 's' : ''} en el celular sin subir.
+            Se suben solas cuando haya señal.</Text>
+        </View>
+      )}
 
       <TouchableOpacity style={s.mainBtn} onPress={() => navigation.navigate('Inspeccionar')}>
         <Text style={s.mainBtnIcon}>🔍</Text>
@@ -113,6 +122,8 @@ export default function HomeTab() {
 const s = StyleSheet.create({
   container:{ flex:1, backgroundColor:'#0d1117' },
   hero:{ padding:20, paddingBottom:12 },
+  offline:{ marginHorizontal:16, marginBottom:10, padding:12, borderRadius:12, backgroundColor:'#d2992226', borderWidth:1, borderColor:'#d29922' },
+  offlineTxt:{ color:'#e3b341', fontSize:13 },
   saludo:{ fontSize:14, color:'#8892b0' },
   nombre:{ fontSize:26, fontWeight:'800', color:'#e6f1ff' },
   empresa:{ fontSize:13, color:'#8892b0', marginTop:2 },
