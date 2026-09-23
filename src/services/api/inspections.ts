@@ -31,8 +31,12 @@ export async function uploadPhoto(tireInspectionId: string, localUri: string): P
   formData.append('file', { uri: localUri, name: filename, type: 'image/jpeg' } as any);
   formData.append('tire_inspection_id', tireInspectionId);
 
+  // NO fijar 'Content-Type' a mano: sin el boundary correcto FastAPI responde
+  // 422 y la foto no se guarda. Al poner el header en undefined se quita el
+  // 'application/json' por defecto del cliente y React Native genera el
+  // 'multipart/form-data; boundary=...' correcto.
   const { data } = await apiClient.post<{ url: string }>('/photos/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': undefined } as any,
   });
   return data.url;
 }

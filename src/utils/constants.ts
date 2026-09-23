@@ -10,6 +10,7 @@ import type { WearPattern } from '../types';
 
 // Generador de etiqueta legible a partir del código
 export function tirePositionLabel(code: string): string {
+  if (!code) return '';
   if (code === 'FL') return 'Direccional Izq.';
   if (code === 'FR') return 'Direccional Der.';
   if (code.startsWith('SP')) return `Repuesto ${code.slice(2)}`;
@@ -21,6 +22,10 @@ export function tirePositionLabel(code: string): string {
     const ext = pos === 'O' ? 'Ext.' : 'Int.';
     return `Eje ${axle} ${lado} ${ext}`;
   }
+
+  // Posiciones SOLOMON tipo P01..P12 (numeración correlativa de la unidad).
+  const p = code.match(/^P0*(\d+)$/);
+  if (p) return `Posición ${parseInt(p[1], 10)}`;
 
   // Legadas
   const legacy: Record<string, string> = {
@@ -54,13 +59,13 @@ export const VEHICLE_TYPE_POSITIONS: Record<string, string[]> = {
   motorcycle: ['FL', 'RL'],
 };
 
-// Mapa de etiquetas (cubre todas las posiciones usadas) — compat con código existente
-const ALL_CODES = Array.from(new Set([
-  'FL', 'FR', 'RL', 'RR', 'RL2', 'RR2', 'RL3', 'RR3',
-  ...TRUCK_6X4, ...TRAILER_6X0,
-]));
-export const TIRE_POSITION_LABELS: Record<string, string> = Object.fromEntries(
-  ALL_CODES.map(c => [c, tirePositionLabel(c)])
+// Mapa de etiquetas. Se envuelve en un Proxy para que CUALQUIER código
+// (incluidos los P01..P12 de SOLOMON, que no estaban en la lista) devuelva
+// siempre una etiqueta legible en vez de `undefined` → antes salía en blanco
+// en la inspección y en la lista de vehículos.
+export const TIRE_POSITION_LABELS: Record<string, string> = new Proxy(
+  {} as Record<string, string>,
+  { get: (_t, code: string) => tirePositionLabel(String(code)) }
 );
 
 // Indica si una posición es repuesto (no rueda)
