@@ -76,3 +76,8 @@ export async function refreshApiConfig(): Promise<string> {
   resolvedBase = null;
   return resolveBaseUrl();
 }
+
+// Base URL resuelto (para subidas con fetch directo, p.ej. fotos multipart).
+export function getApiBase(): Promise<string> {
+  return resolveBaseUrl();
+}
